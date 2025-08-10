@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ahorcado Educativo</title>
+    <style>
+        :root {
+            --bg: #0f1724;
+            --card: #0b1220;
+            --accent: #06b6d4;
+            --muted: #94a3b8;
+            --win: #22c55e;
+            --lose: #ef4444
+        }
+        
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a2a3a, #0d1b2a);
+            color: #e6eef6;
+            padding: 20px;
+        }
+        
+        .wrap {
+            width: 980px;
+            max-width: 96%;
+            background: rgba(11, 18, 32, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 25px;
+            border-radius: 15px;
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+        
+        header {
+            grid-column: 1/-1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 15px;
+            margin-bottom: 10px;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin: 0;
+            background: linear-gradient(90deg, #06b6d4, #22c55e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        button {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: inherit;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(-2px);
+        }
+        
+        button.primary {
+            background: var(--accent);
+            color: #042026;
+            border: none;
+            font-weight: 600;
+        }
+        
+        button.primary:hover {
+            background: #0ac8e4;
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+        }
+        
+        .left {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .stage {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .svg-wrap {
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        svg {
+            width: 260px;
+            height: 260px;
+        }
+        
+        /* Hangman lines */
+        .gallow line {
+            stroke: #9fb3c9;
+            stroke-width: 6;
+            stroke-linecap: round;
+        }
+        
+        /* Man parts */
+        .man .rope {
+            stroke: #cfdfe8;
+            stroke-width: 2;
+        }
+        
+        .man .head {
+            fill: #ffd9c9;
+            stroke: #caa38a;
+            stroke-width: 2;
+        }
+        
+        .man .body {
+            stroke: #ffd9c9;
+            stroke-width: 8;
+            stroke-linecap: round;
+        }
+        
+        .man .arm, .man .leg {
+            stroke: #ffd9c9;
+            stroke-width: 6;
+            stroke-linecap: round;
+        }
+        
+        /* animations */
+        @keyframes swing {
+            0% { transform: rotate(-12deg) }
+            50% { transform: rotate(12deg) }
+            100% { transform: rotate(-12deg) }
+        }
+        
+        @keyframes danceY {
+            0% { transform: translateY(0) }
+            50% { transform: translateY(-8px) }
+            100% { transform: translateY(0) }
+        }
+        
+        .swing {
+            transform-origin: top center;
+            animation: swing 900ms ease-in-out infinite;
+        }
+        
+        .dance {
+            animation: danceY 500ms ease-in-out infinite;
+        }
+        
+        /* face states */
+        .eyes {
+            stroke: #2b3440;
+            stroke-width: 3;
+            stroke-linecap: round;
+        }
+        
+        .eyes.dead { display: none }
+        .eyes.x { display: none }
+        .tongue { display: none }
+        
+        .dead .eyes.normal { display: none }
+        .dead .eyes.x { display: block }
+        .dead .tongue { display: block; fill: #ef4444 }
+        
+        .wordbox {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        
+        .letter {
+            min-width: 38px;
+            height: 52px;
+            border-bottom: 3px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(13, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .key {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+            font-weight: 600;
+        }
+        
+        .key:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .key.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            background: rgba(255, 255, 255, 0.03);
+        }
+        
+        .info {
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            text-align: center;
+            width: 100%;
+        }
+        
+        .msg {
+            font-weight: 600;
+            font-size: 18px;
+            min-height: 28px;
+            color: #06b6d4;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(6, 182, 212, 0.08);
+            margin-bottom: 10px;
+        }
+        
+        .small {
+            font-size: 14px;
+            color: var(--muted);
+        }
+        
+        .right {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        select {
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: inherit;
+            width: 100%;
+            font-size: 15px;
+        }
+        
+        /* victory */
+        .win svg .man {
+            filter: drop-shadow(0 8px 18px rgba(34, 197, 94, 0.2));
+        }
+        
+        .win .man {
+            animation: danceY 420ms ease-in-out infinite;
+        }
+        
+        .win .man .head {
+            transform-origin: center bottom;
+        }
+        
+        /* responsive */
+        @media (max-width: 820px) {
+            .wrap {
+                grid-template-columns: 1fr;
+            }
+            
+            .svg-wrap {
+                width: 250px;
+                height: 250px;
+            }
+            
+            svg {
+                width: 220px;
+                height: 220px;
+            }
+        }
+        
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .stat-box {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            flex: 1;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-top: 5px;
+        }
+        
+        .category-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #06b6d4;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header>
+            <h1>Ahorcado Educativo</h1>
+            <div class="controls">
+                <button id="btn-nuevo" class="primary">Nueva palabra</button>
+                <button id="btn-reset">Reiniciar</button>
+            </div>
+        </header>
+        
+        <section class="left">
+            <div class="stage">
+                <div class="msg" id="msg">Selecciona una categoría para comenzar</div>
+                <div class="svg-wrap" aria-hidden="true">
+                    <!-- SVG Gallow + man -->
+                    <svg viewBox="0 0 220 260" xmlns="http://www.w3.org/2000/svg">
+                        <g class="gallow">
+                            <line x1="20" y1="240" x2="120" y2="240" />
+                            <line x1="60" y1="240" x2="60" y2="20" />
+                            <line x1="60" y1="20" x2="150" y2="20" />
+                            <line x1="150" y1="20" x2="150" y2="48" id="rope-line" />
+                        </g>
+                        <g class="man" id="man" transform="translate(0,0)">
+                            <!-- rope segment (revealed with first error) -->
+                            <line class="rope" x1="150" y1="48" x2="150" y2="68" id="rope" style="opacity:0"/>
+                            <!-- head -->
+                            <g id="headGroup" transform="translate(150,92)">
+                                <circle class="head" cx="0" cy="0" r="16" />
+                                <!-- eyes normal -->
+                                <g class="eyes normal">
+                                    <circle cx="-6" cy="-3" r="2.2" fill="#2b3440" />
+                                    <circle cx="6" cy="-3" r="2.2" fill="#2b3440" />
+                                </g>
+                                <!-- eyes X for dead -->
+                                <g class="eyes x">
+                                    <line x1="-9" y1="-9" x2="-3" y2="-3" stroke="#2b3440" stroke-width="3"/>
+                                    <line x1="-9" y1="-3" x2="-3" y2="-9" stroke="#2b3440" stroke-width="3"/>
+                                    <line x1="3" y1="-9" x2="9" y2="-3" stroke="#2b3440" stroke-width="3"/>
+                                    <line x1="3" y1="-3" x2="9" y2="-9" stroke="#2b3440" stroke-width="3"/>
+                                </g>
+                                <!-- tongue -->
+                                <path class="tongue" d="M -6 6 q6 8 12 0 q-6 4 -12 0" />
+                            </g>
+                            <!-- body -->
+                            <line class="body" x1="150" y1="108" x2="150" y2="158" id="body" style="opacity:0" />
+                            <!-- left arm -->
+                            <line class="arm" x1="150" y1="118" x2="128" y2="138" id="armL" style="opacity:0" />
+                            <!-- right arm -->
+                            <line class="arm" x1="150" y1="118" x2="172" y2="138" id="armR" style="opacity:0" />
+                            <!-- left leg -->
+                            <line class="leg" x1="150" y1="158" x2="136" y2="192" id="legL" style="opacity:0" />
+                            <!-- right leg -->
+                            <line class="leg" x1="150" y1="158" x2="164" y2="192" id="legR" style="opacity:0" />
+                        </g>
+                    </svg>
+                </div>
+                <div class="info">
+                    <div class="small" id="small">Errores: <span id="err-count">0</span> / 6</div>
+                </div>
+            </div>
+            
+            <div class="stage">
+                <div class="wordbox" id="wordbox" aria-live="polite"></div>
+                <div class="keyboard" id="keyboard" aria-hidden="false"></div>
+            </div>
+        </section>
+        
+        <aside class="right">
+            <div class="stage">
+                <div class="category-title">Selecciona una categoría</div>
+                <div>
+                    <label for="categoria" class="small">Categoría</label><br>
+                    <select id="categoria">
+                        <option value="aleatorio">Aleatorio</option>
+                        <option value="geometría">Geometría</option>
+                        <option value="estadística">Estadística</option>
+                        <option value="religión">Religión</option>
+                        <option value="ética">Ética</option>
+                        <option value="artística">Artística</option>
+                        <option value="educación física">Educación Física</option>
+                        <option value="ciencias naturales">Ciencias Naturales</option>
+                        <option value="sociales">Sociales</option>
+                        <option value="historia">Historia</option>
+                        <option value="tecnología">Tecnología</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="stage info">
+                <div class="stats-container">
+                    <div class="stat-box">
+                        <div class="small">Palabras probadas</div>
+                        <div class="stat-value" id="tried">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="small">Aciertos</div>
+                        <div class="stat-value" id="wins">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="small">Derrotas</div>
+                        <div class="stat-value" id="losses">0</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stage">
+                <div class="small">Instrucciones:</div>
+                <ul style="margin:8px 0 0 18px;padding:0;font-size:14px;color:var(--muted);line-height:1.6">
+                    <li>Selecciona una categoría educativa.</li>
+                    <li>Usa el teclado en pantalla o tu teclado físico.</li>
+                    <li>6 errores y pierdes (muñeco colgado).</li>
+                    <li>Cuando ganes, el muñeco bailará.</li>
+                    <li>Cada palabra tiene una pista educativa.</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+    
+    <script>
+        // ----- Datos base -----
+        const WORDS = {
+            "geometría": [
+                { palabra: "mosca", pista: "Punto que se mueve en el plano" },
+                { palabra: "rené descartes", pista: "Filósofo y matemático famoso por su frase 'Pienso, luego existo'" },
+                { palabra: "coordenadas", pista: "Pares de números que localizan un punto en el plano" },
+                { palabra: "ejes", pista: "Rectas perpendiculares que forman el sistema de referencia" }
+            ],
+            "estadística": [
+                { palabra: "frecuencia", pista: "Número de veces que se repite un valor" },
+                { palabra: "absoluta", pista: "Tipo de frecuencia que cuenta las repeticiones" },
+                { palabra: "relativa", pista: "Frecuencia que se expresa en proporción o porcentaje" },
+                { palabra: "datos", pista: "Información recogida para su análisis" }
+            ],
+            "religión": [
+                { palabra: "santísima trinidad", pista: "Dogma central del cristianismo: Padre, Hijo y Espíritu Santo" },
+                { palabra: "doctrina", pista: "Conjunto de enseñanzas de una religión" },
+                { palabra: "dios", pista: "Ser supremo en las religiones monoteístas" },
+                { palabra: "salvador", pista: "Jesucristo es considerado el ..." }
+            ],
+            "ética": [
+                { palabra: "comunidad", pista: "Grupo de personas que comparten intereses o territorio" },
+                { palabra: "aceptación", pista: "Reconocimiento y valoración de la diversidad" },
+                { palabra: "respeto", pista: "Consideración hacia los demás" },
+                { palabra: "solidaridad", pista: "Apoyo incondicional a causas justas" }
+            ],
+            "artística": [
+                { palabra: "sombra", pista: "Ausencia de luz en una superficie" },
+                { palabra: "luz", pista: "Elemento fundamental en la pintura y fotografía" },
+                { palabra: "volumen", pista: "Propiedad tridimensional de los objetos" },
+                { palabra: "textura", pista: "Tacto o apariencia de una superficie" }
+            ],
+            "educación física": [
+                { palabra: "currulao", pista: "Baile tradicional del Pacífico colombiano" },
+                { palabra: "pacífico", pista: "Región de Colombia conocida por su folclor" },
+                { palabra: "baile", pista: "Movimiento al ritmo de la música" },
+                { palabra: "cultura", pista: "Conjunto de tradiciones y expresiones de un pueblo" }
+            ],
+            "ciencias naturales": [
+                { palabra: "biogeoquimicos", pista: "Ciclos que involucran elementos químicos y seres vivos" },
+                { palabra: "fotosíntesis", pista: "Proceso por el cual las plantas producen su alimento" },
+                { palabra: "carbono", pista: "Elemento fundamental para la vida" },
+                { palabra: "agua", pista: "Compuesto esencial para la vida en la Tierra" }
+            ],
+            "sociales": [
+                { palabra: "gaitán", pista: "Líder político asesinado en el Bogotazo" },
+                { palabra: "proceso de paz", pista: "Negociaciones para terminar un conflicto armado" },
+                { palabra: "pacto histórico", pista: "Acuerdo político reciente en Colombia" },
+                { palabra: "liberal y conservador", pista: "Partidos políticos tradicionales de Colombia" }
+            ],
+            "historia": [
+                { palabra: "iglesia", pista: "Institución poderosa en la Edad Media" },
+                { palabra: "vasallos", pista: "Personas que servían a un señor feudal" },
+                { palabra: "siervos", pista: "Campesinos que trabajaban las tierras del señor feudal" },
+                { palabra: "rey", pista: "Máxima autoridad en una monarquía" }
+            ],
+            "tecnología": [
+                { palabra: "objetos", pista: "Entidades con propiedades y comportamientos en programación" },
+                { palabra: "programación", pista: "Proceso de crear software" },
+                { palabra: "mitchel resnick", pista: "Creador del lenguaje de programación Scratch" },
+                { palabra: "bloques", pista: "Elementos gráficos para programar de manera visual" }
+            ]
+        };
+        
+        // estado
+        let palabra = "";
+        let display = [];
+        let errores = 0;
+        let maxErrores = 6;
+        let usadas = new Set();
+        let tried = 0, wins = 0, losses = 0;
+        let currentHint = "";
+        
+        // nodos
+        const wordbox = document.getElementById('wordbox');
+        const keyboard = document.getElementById('keyboard');
+        const errCount = document.getElementById('err-count');
+        const msg = document.getElementById('msg');
+        const man = document.getElementById('man');
+        const rope = document.getElementById('rope');
+        const body = document.getElementById('body');
+        const armL = document.getElementById('armL');
+        const armR = document.getElementById('armR');
+        const legL = document.getElementById('legL');
+        const legR = document.getElementById('legR');
+        const btnNuevo = document.getElementById('btn-nuevo');
+        const btnReset = document.getElementById('btn-reset');
+        const categoria = document.getElementById('categoria');
+        const triedNode = document.getElementById('tried');
+        const winsNode = document.getElementById('wins');
+        const lossesNode = document.getElementById('losses');
+        
+        // teclado virtual
+        const letters = "abcdefghijklmnñopqrstuvwxyz".split('');
+        
+        function crearTeclado(){
+            keyboard.innerHTML='';
+            letters.forEach(l=>{
+                const b = document.createElement('div');
+                b.className='key';
+                b.textContent=l.toUpperCase();
+                b.tabIndex=0;
+                b.addEventListener('click',()=>selectLetter(l));
+                b.addEventListener('keydown',(e)=>{
+                    if(e.key==='Enter') selectLetter(l);
+                });
+                keyboard.appendChild(b);
+            });
+        }
+        
+        function elegirPalabra(){
+            const cat = categoria.value;
+            let pool = [];
+            
+            if(cat === 'aleatorio'){
+                // Combinar todas las palabras de todas las categorías
+                Object.values(WORDS).forEach(catWords => {
+                    catWords.forEach(item => {
+                        pool.push(item);
+                    });
+                });
+            } else if (WORDS[cat]) {
+                pool = WORDS[cat];
+            } else {
+                // Fallback en caso de categoría no reconocida
+                pool = Object.values(WORDS).flat();
+            }
+            
+            if(pool.length === 0) {
+                // Si no hay palabras, crear un array de respaldo
+                return {
+                    palabra: "palabra",
+                    pista: "Selecciona una categoría válida"
+                };
+            }
+            
+            const item = pool[Math.floor(Math.random() * pool.length)];
+            return {
+                palabra: item.palabra.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, ''),
+                pista: item.pista
+            };
+        }
+        
+        function nuevaJuego(){
+            const item = elegirPalabra();
+            palabra = item.palabra;
+            currentHint = item.pista;
+            
+            display = Array.from(palabra).map(ch => {
+                if (/[a-zñáéíóúü]/.test(ch)) return '_';
+                if (ch === ' ') return ' ';
+                return ch;
+            });
+            
+            errores = 0;
+            usadas.clear();
+            updateUI();
+            revealParts(0);
+            msg.textContent = currentHint;
+            man.classList.remove('dead');
+            man.classList.remove('win');
+            tried++;
+            triedNode.textContent = tried;
+        }
+        
+        function reiniciarStats(){
+            tried = 0;
+            wins = 0;
+            losses = 0;
+            triedNode.textContent = "0";
+            winsNode.textContent = "0";
+            lossesNode.textContent = "0";
+            nuevaJuego();
+        }
+        
+        function updateUI(){
+            // word display
+            wordbox.innerHTML = '';
+            display.forEach(ch => {
+                const d = document.createElement('div');
+                d.className = 'letter';
+                d.textContent = ch === '_' ? '' : ch.toUpperCase();
+                wordbox.appendChild(d);
+            });
+            
+            // keyboard
+            Array.from(keyboard.children).forEach(k => {
+                const l = k.textContent.toLowerCase();
+                if(usadas.has(l)) k.classList.add('disabled');
+                else k.classList.remove('disabled');
+            });
+            
+            errCount.textContent = errores;
+            winsNode.textContent = wins;
+            lossesNode.textContent = losses;
+        }
+        
+        function selectLetter(letter){
+            if(usadas.has(letter) || man.classList.contains('dead') || man.classList.contains('win')) return;
+            
+            usadas.add(letter);
+            const idxs = [];
+            for(let i = 0; i < palabra.length; i++) {
+                if(palabra[i] === letter) idxs.push(i);
+            }
+            
+            if(idxs.length > 0){
+                idxs.forEach(i => display[i] = palabra[i]);
+                msg.textContent = '¡Correcto! ' + currentHint;
+            } else {
+                errores++;
+                msg.textContent = 'Incorrecto. ' + currentHint;
+                revealParts(errores);
+            }
+            
+            updateUI();
+            checkEnd();
+        }
+        
+        function revealParts(count){
+            // 1: rope, 2: body, 3: arms, 4: legs, 5: final death
+            rope.style.opacity = count >= 1 ? 1 : 0;
+            body.style.opacity = count >= 2 ? 1 : 0;
+            armL.style.opacity = count >= 3 ? 1 : 0;
+            armR.style.opacity = count >= 3 ? 1 : 0;
+            legL.style.opacity = count >= 4 ? 1 : 0;
+            legR.style.opacity = count >= 4 ? 1 : 0;
+            
+            // add swing animation
+            const manEl = document.getElementById('man');
+            if(count >= 1 && count < 6){
+                manEl.classList.add('swing');
+            } else {
+                manEl.classList.remove('swing');
+            }
+            
+            if(count >= maxErrores){
+                // muerte
+                manEl.classList.add('dead');
+                msg.textContent = '¡Perdiste! La palabra era: ' + palabra.toUpperCase();
+                losses++;
+                lossesNode.textContent = losses;
+            }
+        }
+        
+        function checkEnd(){
+            if(!display.includes('_')){ // win
+                man.classList.add('win');
+                man.classList.remove('dead');
+                msg.textContent = '¡Ganaste! ' + palabra.toUpperCase();
+                wins++;
+                winsNode.textContent = wins;
+            }
+            
+            if(errores >= maxErrores){
+                // reveal word fully
+                display = Array.from(palabra);
+                updateUI();
+            }
+        }
+        
+        // keyboard physical
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if(/^[a-zñ]$/.test(k)) selectLetter(k);
+            if(e.key === 'Enter') nuevaJuego();
+        });
+        
+        btnNuevo.addEventListener('click', nuevaJuego);
+        btnReset.addEventListener('click', reiniciarStats);
+        
+        // Inicializar el juego cuando se cambia la categoría
+        categoria.addEventListener('change', nuevaJuego);
+        
+        // init
+        crearTeclado();
+        nuevaJuego();
+    </script>
+</body>
+</html>
